@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import shutil
 import sys
+from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 from app.config import Settings, get_settings
 from app.review_service import ReviewService, SourceFile
@@ -60,8 +61,21 @@ def root(cfg: Settings = Depends(get_settings)) -> dict:
     return {
         "service": cfg.app_name,
         "version": cfg.app_version,
-        "endpoints": ["POST /review", "GET /health"],
+        "ui": "GET /ui",
+        "endpoints": ["GET /ui", "POST /review", "GET /health"],
     }
+
+
+_UI_PATH = Path(__file__).parent / "web" / "index.html"
+
+
+@app.get("/ui", response_class=HTMLResponse, tags=["meta"])
+def ui() -> str:
+    """Serve the simple browser interface for pasting code and viewing findings."""
+    try:
+        return _UI_PATH.read_text(encoding="utf-8")
+    except FileNotFoundError:  # pragma: no cover
+        raise HTTPException(status_code=404, detail="UI not found.")
 
 
 @app.get("/health", response_model=HealthResponse, tags=["meta"])
