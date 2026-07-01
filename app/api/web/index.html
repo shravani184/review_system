@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Code Review — Hybrid LLM System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --paper: #FBFAF8;
+    --panel: #FFFFFF;
+    --ink: #23262F;
+    --ink-soft: #5B6270;
+    --hairline: #E7E3DC;
+    --editor-bg: #1B1E27;
+    --editor-ink: #E8E9EC;
+    --editor-line: #2A2E3A;
+    --btn: #22252E;
+    --btn-hover: #101319;
+
+    --sev-critical: #B21E35;
+    --sev-high: #D9663D;
+    --sev-medium: #C99A2E;
+    --sev-low: #3E7CB1;
+    --sev-info: #7A8290;
+
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(20,22,30,.04), 0 8px 24px rgba(20,22,30,.06);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- Header ---- */
+  header.topbar {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 22px clamp(16px, 4vw, 40px);
+    border-bottom: 1px solid var(--hairline);
+    background: var(--panel);
+  }
+  .brand h1 {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 700;
+    font-size: clamp(18px, 2.4vw, 24px);
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .brand p {
+    margin: 3px 0 0;
+    font-size: 13px;
+    color: var(--ink-soft);
+    max-width: 52ch;
+  }
+  .status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-family: "JetBrains Mono", monospace;
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--sev-info);
+  }
+  .dot.ok { background: #2E9E6B; }
+  .dot.down { background: var(--sev-critical); }
+
+  /* ---- Layout ---- */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(16px, 2.5vw, 28px);
+    padding: clamp(16px, 3vw, 32px) clamp(16px, 4vw, 40px);
+    max-width: 1400px;
+    margin: 0 auto;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  .col-label {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin: 0 0 10px;
+  }
+
+  /* ---- Editor ---- */
+  .editor-shell {
+    background: var(--editor-bg);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    border: 1px solid #12141b;
+  }
+  .editor-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--editor-line);
+  }
+  .editor-head input {
+    background: transparent;
+    border: none;
+    color: var(--editor-ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13px;
+    padding: 4px 6px;
+    border-radius: 6px;
+    outline: none;
+    width: 220px;
+    max-width: 60%;
+  }
+  .editor-head input:focus { background: #12141b; }
+  .traffic { display: flex; gap: 6px; margin-right: 6px; }
+  .traffic span { width: 11px; height: 11px; border-radius: 50%; opacity: .8; }
+  .traffic .r { background: #E5544B; }
+  .traffic .y { background: #E0B23A; }
+  .traffic .g { background: #52B15C; }
+
+  textarea#code {
+    width: 100%;
+    min-height: 340px;
+    resize: vertical;
+    border: none;
+    outline: none;
+    background: var(--editor-bg);
+    color: var(--editor-ink);
+    font-family: "JetBrains Mono", monospace;
+    font-size: 13.5px;
+    line-height: 1.6;
+    padding: 16px;
+    tab-size: 4;
+    display: block;
+  }
+  textarea#code::placeholder { color: #5b6172; }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  button {
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    border: none;
+    border-radius: 8px;
+    padding: 11px 20px;
+    cursor: pointer;
+    transition: background .15s ease, transform .05s ease;
+  }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--btn); color: #fff; }
+  button.primary:hover { background: var(--btn-hover); }
+  button.primary:disabled { opacity: .55; cursor: default; }
+  button.ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--hairline);
+  }
+  button.ghost:hover { color: var(--ink); border-color: #cfcabf; }
+  .hint {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-left: auto;
+  }
+
+  /* ---- Results ---- */
+  .results-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .count {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .count b { font-size: 20px; }
+
+  .placeholder-card, .empty-card {
+    border: 1px dashed var(--hairline);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--ink-soft);
+    background: var(--panel);
+  }
+  .empty-card { border-style: solid; }
+  .empty-card .big {
+    font-family: "Space Grotesk", sans-serif;
+    font-size: 32px;
+    color: #2E9E6B;
+    margin-bottom: 4px;
+  }
+
+  .finding {
+    position: relative;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--sev-info);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .finding.critical { border-left-color: var(--sev-critical); }
+  .finding.high     { border-left-color: var(--sev-high); }
+  .finding.medium   { border-left-color: var(--sev-medium); }
+  .finding.low      { border-left-color: var(--sev-low); }
+  .finding.info     { border-left-color: var(--sev-info); }
+
+  .finding-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+  }
+  .chip {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #fff;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--sev-info);
+  }
+  .chip.critical { background: var(--sev-critical); }
+  .chip.high     { background: var(--sev-high); }
+  .chip.medium   { background: var(--sev-medium); }
+  .chip.low      { background: var(--sev-low); }
+  .chip.info     { background: var(--sev-info); }
+
+  .ftype {
+    font-family: "Space Grotesk", sans-serif;
+    font-weight: 600;
+    font-size: 15.5px;
+    letter-spacing: -0.01em;
+  }
+  .loc {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-left: auto;
+  }
+  .finding p { margin: 6px 0; font-size: 13.5px; }
+  .finding .label {
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .finding .msg {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    background: #F5F3EF;
+    padding: 6px 9px;
+    border-radius: 6px;
+    display: inline-block;
+  }
+  .conf {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .conf-track {
+    flex: 1;
+    height: 6px;
+    background: #ECE8E1;
+    border-radius: 999px;
+    overflow: hidden;
+    max-width: 180px;
+  }
+  .conf-fill { height: 100%; background: var(--btn); border-radius: 999px; }
+  .conf-num {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+  }
+  .provenance {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .error-banner {
+    background: #FCEEEA;
+    border: 1px solid #F0C4B6;
+    color: #8A2B18;
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-size: 13.5px;
+  }
+  footer {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    padding: 20px;
+    font-family: "JetBrains Mono", monospace;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <h1>Code Review</h1>
+      <p>Paste Python code, run the review, and see verified issues. Static analysis finds them; the assistant only explains what was found.</p>
+    </div>
+    <div class="status" id="status">
+      <span class="dot" id="statusDot"></span>
+      <span id="statusText">checking service…</span>
+    </div>
+  </header>
+
+  <main>
+    <!-- INPUT -->
+    <section>
+      <p class="col-label">Your code</p>
+      <div class="editor-shell">
+        <div class="editor-head">
+          <div class="traffic"><span class="r"></span><span class="y"></span><span class="g"></span></div>
+          <input id="filename" value="snippet.py" spellcheck="false" aria-label="File name" />
+        </div>
+        <textarea id="code" spellcheck="false" placeholder="# Paste your Python code here, then click “Review code”."></textarea>
+      </div>
+      <div class="actions">
+        <button class="primary" id="reviewBtn">Review code</button>
+        <button class="ghost" id="exampleBtn">Load example</button>
+        <button class="ghost" id="clearBtn">Clear</button>
+        <span class="hint" id="hint"></span>
+      </div>
+    </section>
+
+    <!-- OUTPUT -->
+    <section>
+      <div class="results-head">
+        <p class="col-label" style="margin:0">Findings</p>
+        <span class="count" id="count"></span>
+      </div>
+      <div id="results">
+        <div class="placeholder-card">Results will appear here after you run a review.</div>
+      </div>
+    </section>
+  </main>
+
+  <footer>Hybrid LLM Code Review System · runs locally · <span id="modeFoot">offline mode</span></footer>
+
+<script>
+  const SAMPLE = `import os
+import os
+
+
+DATABASE_PASSWORD = "admin123"
+
+
+def login(username):
+    print(user)
+    query = "SELECT * FROM users WHERE name = '" + username + "'"
+    return query
+
+
+def process(a, b, c, d, e, f):
+    result = eval("a + b")
+    return result
+`;
+
+  const el = (id) => document.getElementById(id);
+  const codeEl = el("code");
+  const fileEl = el("filename");
+
+  // Prefill with the example so the first click already shows something.
+  codeEl.value = SAMPLE;
+
+  el("exampleBtn").addEventListener("click", () => { codeEl.value = SAMPLE; codeEl.focus(); });
+  el("clearBtn").addEventListener("click", () => { codeEl.value = ""; el("results").innerHTML =
+    '<div class="placeholder-card">Results will appear here after you run a review.</div>';
+    el("count").textContent = ""; codeEl.focus(); });
+
+  el("reviewBtn").addEventListener("click", runReview);
+
+  function severityClass(sev) {
+    return (sev || "info").toLowerCase();
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c =>
+      ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  }
+
+  async function runReview() {
+    const btn = el("reviewBtn");
+    const code = codeEl.value;
+    if (!code.trim()) {
+      el("hint").textContent = "Nothing to review — paste some code first.";
+      return;
+    }
+    el("hint").textContent = "";
+
+    // Sanitize filename: basename only, must end in .py
+    let name = (fileEl.value || "snippet.py").split(/[\\/]/).pop().trim() || "snippet.py";
+    if (!name.toLowerCase().endsWith(".py")) name += ".py";
+    fileEl.value = name;
+
+    const fd = new FormData();
+    fd.append("files", new File([code], name, { type: "text/x-python" }));
+
+    btn.disabled = true;
+    btn.textContent = "Reviewing…";
+    try {
+      const resp = await fetch("/review", { method: "POST", body: fd });
+      const data = await resp.json();
+      renderResults(data);
+    } catch (e) {
+      el("results").innerHTML =
+        '<div class="error-banner">Could not reach the review service. Make sure the server is still running, then try again.</div>';
+      el("count").textContent = "";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Review code";
+    }
+  }
+
+  function renderResults(data) {
+    const file = (data.files && data.files[0]) || null;
+    const results = el("results");
+    const countEl = el("count");
+
+    if (!file) {
+      results.innerHTML = '<div class="error-banner">No result returned.</div>';
+      countEl.textContent = "";
+      return;
+    }
+
+    // Syntax error / rejected file
+    if (file.error || file.syntax_valid === false) {
+      results.innerHTML =
+        '<div class="error-banner"><b>Could not analyze this file.</b><br>' +
+        escapeHtml(file.error || "The code has a syntax error, so static analysis can’t run. Fix the syntax and review again.") +
+        '</div>';
+      countEl.textContent = "";
+      return;
+    }
+
+    const issues = file.issues || [];
+    if (issues.length === 0) {
+      results.innerHTML =
+        '<div class="empty-card"><div class="big">✓ Clean</div>No issues found in this code.</div>';
+      countEl.innerHTML = "<b>0</b> issues";
+      return;
+    }
+
+    countEl.innerHTML = "<b>" + issues.length + "</b> issue" + (issues.length === 1 ? "" : "s");
+
+    results.innerHTML = issues.map(iss => {
+      const sc = severityClass(iss.severity);
+      const conf = Math.round((iss.confidence || 0) * 100);
+      return `
+        <div class="finding ${sc}">
+          <div class="finding-top">
+            <span class="chip ${sc}">${escapeHtml(iss.severity)}</span>
+            <span class="ftype">${escapeHtml(iss.type)}</span>
+            <span class="loc">line ${iss.line}</span>
+          </div>
+          <p><span class="label">What it is:</span> ${escapeHtml(iss.explanation)}</p>
+          <p><span class="label">Suggested fix:</span> ${escapeHtml(iss.suggestion)}</p>
+          <p><span class="msg">${escapeHtml(iss.message)}</span></p>
+          <div class="conf">
+            <span class="provenance">${escapeHtml(iss.tool)}${iss.code ? " · " + escapeHtml(iss.code) : ""}</span>
+            <div class="conf-track"><div class="conf-fill" style="width:${conf}%"></div></div>
+            <span class="conf-num">${conf}% confidence</span>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // Health check on load
+  (async () => {
+    try {
+      const r = await fetch("/health");
+      const h = await r.json();
+      el("statusDot").className = "dot ok";
+      el("statusText").textContent = "service ok · " + h.llm_mode + " mode";
+      el("modeFoot").textContent = h.llm_mode + " mode";
+    } catch {
+      el("statusDot").className = "dot down";
+      el("statusText").textContent = "service unreachable";
+    }
+  })();
+</script>
+</body>
+</html>
