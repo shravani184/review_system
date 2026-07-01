@@ -1,0 +1,86 @@
+{
+  "filename": "sample_input.py",
+  "syntax_valid": true,
+  "issues": [
+    {
+      "tool": "Bandit",
+      "type": "Hardcoded Password",
+      "severity": "High",
+      "line": 1,
+      "column": 11,
+      "filename": "sample_input.py",
+      "code": "B105",
+      "message": "Possible hardcoded password: 'admin123'",
+      "explanation": "A credential appears to be embedded directly in the source code, which exposes it to anyone with repository access.",
+      "suggestion": "Move the secret into an environment variable or a secrets manager and read it at runtime (e.g. os.environ['DB_PASSWORD']).",
+      "confidence": 0.935
+    },
+    {
+      "tool": "Pylint",
+      "type": "Undefined Variable",
+      "severity": "High",
+      "line": 5,
+      "column": 10,
+      "filename": "sample_input.py",
+      "code": "E0602",
+      "message": "Undefined variable 'user'",
+      "explanation": "This name is used before it is assigned or imported in the current scope, so it will raise a NameError at runtime.",
+      "suggestion": "Define, import, or pass the variable before it is referenced.",
+      "confidence": 0.935
+    },
+    {
+      "tool": "Pylint",
+      "type": "Missing Docstring",
+      "severity": "Low",
+      "line": 1,
+      "column": 0,
+      "filename": "sample_input.py",
+      "code": "C0114",
+      "message": "Missing module docstring",
+      "explanation": "This module, class, or function lacks a docstring, reducing readability and tooling support.",
+      "suggestion": "Add a short docstring describing purpose, parameters, and return value.",
+      "confidence": 0.835
+    },
+    {
+      "tool": "Pylint",
+      "type": "Naming Convention Violation",
+      "severity": "Low",
+      "line": 1,
+      "column": 0,
+      "filename": "sample_input.py",
+      "code": "C0103",
+      "message": "Constant name \"password\" doesn't conform to UPPER_CASE naming style",
+      "explanation": "This identifier does not follow the project's naming conventions.",
+      "suggestion": "Rename to match the expected style (snake_case for functions/variables, UPPER_CASE for constants, PascalCase for classes).",
+      "confidence": 0.835
+    },
+    {
+      "tool": "Pylint",
+      "type": "Missing Docstring",
+      "severity": "Low",
+      "line": 4,
+      "column": 0,
+      "filename": "sample_input.py",
+      "code": "C0116",
+      "message": "Missing function or method docstring",
+      "explanation": "This module, class, or function lacks a docstring, reducing readability and tooling support.",
+      "suggestion": "Add a short docstring describing purpose, parameters, and return value.",
+      "confidence": 0.835
+    },
+    {
+      "tool": "CustomRule",
+      "type": "Missing Type Hints",
+      "severity": "Low",
+      "line": 4,
+      "column": null,
+      "filename": "sample_input.py",
+      "code": "CR008",
+      "message": "Function 'login' is missing type hints (return type).",
+      "explanation": "Missing type annotations reduce IDE support and static checking.",
+      "suggestion": "Add type hints to parameters and the return value.",
+      "confidence": 0.79
+    }
+  ],
+  "issue_count": 6,
+  "error": null
+}
